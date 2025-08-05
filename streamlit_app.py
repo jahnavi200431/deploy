@@ -106,7 +106,7 @@ def main():
 
     if 'retriever' not in st.session_state:
         with st.spinner("Loading documents and initializing retriever..."):
-            docs = load_documents("data/sample.txt")
+            docs = load_documents("sample.txt")
             chunks = chunk_documents(docs)
 
             v_index = FaissVectorIndex()
@@ -136,4 +136,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
