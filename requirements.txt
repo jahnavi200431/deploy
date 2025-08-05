@@ -4,4 +4,7 @@ langchain
 chromadb[client]
 openai
 networkx
+chromadb==0.4.15
+
+
 
