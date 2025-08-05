@@ -10,11 +10,11 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import TextLoader
 import openai
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer
 import torch
 from packaging import version
-load_dotenv()
 
+# Load API key from .env
+load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
@@ -32,20 +32,19 @@ def chunk_documents(texts: List[str], chunk_size=500, overlap=50) -> List[str]:
 
 class FaissVectorIndex:
     def __init__(self, model_name='all-MiniLM-L6-v2'):
-        model_name = "all-MiniLM-L6-v2"  # or whatever you're using
+        self.model = SentenceTransformer(model_name)
 
-        model = SentenceTransformer(model_name)
+        # Move model to device only if required
+        if version.parse(torch.__version__) < version.parse("2.3.0"):
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.model.to(torch.device(device))
 
-# Safe device transfer only if torch version < 2.2 (avoid on 2.3+)
-if version.parse(torch.__version__) < version.parse("2.2.0"):
-    model.to(torch.device("cpu"))
-        self.model = model
         self.index = None
         self.texts = []
 
     def build_index(self, chunks: List[str]):
         self.texts = chunks
-        embeddings = self.model.encode(chunks, convert_to_numpy=True)
+        embeddings = self.model.encode(chunks, convert_to_numpy=True, show_progress_bar=True)
         self.index = faiss.IndexFlatL2(embeddings.shape[1])
         self.index.add(embeddings)
 
@@ -111,7 +110,7 @@ def generate_answer(query: str, context_chunks: List[str]) -> str:
 
 def main():
     st.set_page_config(page_title="Hybrid RAG System")
-    st.title("🔍 Hybrid RAG with Graph Knowledge Integration")
+    st.title("🔍 Hybrid RAG with Vector + Graph-based Retrieval")
     query = st.text_input("Ask your question:")
 
     if 'retriever' not in st.session_state:
@@ -146,9 +145,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
