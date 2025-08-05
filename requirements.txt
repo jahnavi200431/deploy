@@ -1,6 +1,7 @@
 streamlit
 sentence-transformers
 langchain
-chromadb
+chromadb[client]
 openai
 networkx
+
