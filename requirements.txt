@@ -1,13 +1,13 @@
 streamlit
-faiss-cpu
-sentence-transformers
 openai
-python-dotenv
+sentence-transformers
+faiss-cpu
 langchain
-langchain-community
 networkx
-torch==2.7.1
-sentence-transformers==2.2.2
+python-dotenv
+torch
+
+
 
 
 
