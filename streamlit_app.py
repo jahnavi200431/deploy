@@ -13,28 +13,25 @@ from dotenv import load_dotenv
 import torch
 from packaging import version
 
-# Load API key from .env
+# Load API key
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
-
 
 def load_documents(path: str) -> List[str]:
     loader = TextLoader(path)
     docs = loader.load()
     return [doc.page_content for doc in docs]
 
-
 def chunk_documents(texts: List[str], chunk_size=500, overlap=50) -> List[str]:
     splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=overlap)
     chunks = splitter.create_documents(texts)
     return [chunk.page_content for chunk in chunks]
 
-
 class FaissVectorIndex:
     def __init__(self, model_name='all-MiniLM-L6-v2'):
         self.model = SentenceTransformer(model_name)
 
-        # Move model to device only if required
+        # Optional: prevent device mismatch error
         if version.parse(torch.__version__) < version.parse("2.3.0"):
             device = "cuda" if torch.cuda.is_available() else "cpu"
             self.model.to(torch.device(device))
@@ -52,7 +49,6 @@ class FaissVectorIndex:
         query_emb = self.model.encode([query], convert_to_numpy=True)
         D, I = self.index.search(query_emb, k)
         return [self.texts[i] for i in I[0]]
-
 
 class KnowledgeGraph:
     def __init__(self):
@@ -81,7 +77,6 @@ class KnowledgeGraph:
                         results.add(edge_data.get('chunk', ''))
         return list(results)
 
-
 class HybridRetriever:
     def __init__(self, vector_index: FaissVectorIndex, graph: KnowledgeGraph):
         self.vector_index = vector_index
@@ -92,7 +87,6 @@ class HybridRetriever:
         graph_results = self.graph.traverse(query)
         combined = list(set(vector_results + graph_results))
         return combined[:k]
-
 
 def generate_answer(query: str, context_chunks: List[str]) -> str:
     context = "\n".join(context_chunks)
@@ -107,14 +101,13 @@ def generate_answer(query: str, context_chunks: List[str]) -> str:
     )
     return response.choices[0].message.content.strip()
 
-
 def main():
     st.set_page_config(page_title="Hybrid RAG System")
-    st.title("🔍 Hybrid RAG with Vector + Graph-based Retrieval")
+    st.title("🔍 Hybrid RAG with Vector + Graph Retrieval")
     query = st.text_input("Ask your question:")
 
     if 'retriever' not in st.session_state:
-        with st.spinner("Loading documents and initializing retriever..."):
+        with st.spinner("Loading and indexing documents..."):
             docs = load_documents("sample.txt")
             chunks = chunk_documents(docs)
 
@@ -141,7 +134,6 @@ def main():
             st.markdown(f"**Chunk {i+1}:**\n{res}")
 
         st.markdown(f"⏱️ **Latency:** {end - start:.2f} seconds")
-
 
 if __name__ == '__main__':
     main()
