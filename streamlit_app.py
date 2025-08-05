@@ -13,7 +13,7 @@ import openai
 from dotenv import load_dotenv
 load_dotenv()
 
-import os
+
 openai.api_key = os.getenv("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")
 
 def load_documents(path: str) -> List[str]:
@@ -135,4 +135,5 @@ def main():
         st.markdown(f"⏱️ **Latency:** {end - start:.2f} seconds")
 
 if __name__ == '__main__':
+
     main()
