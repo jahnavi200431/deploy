@@ -1,11 +1,10 @@
-
 import os
 import time
 import streamlit as st
-import chromadb
+import faiss
+import numpy as np
 import networkx as nx
 from typing import List
-from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import TextLoader
@@ -13,39 +12,37 @@ import openai
 from dotenv import load_dotenv
 load_dotenv()
 
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-openai.api_key = os.getenv("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")
 
 def load_documents(path: str) -> List[str]:
     loader = TextLoader(path)
     docs = loader.load()
     return [doc.page_content for doc in docs]
 
+
 def chunk_documents(texts: List[str], chunk_size=500, overlap=50) -> List[str]:
     splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=overlap)
     chunks = splitter.create_documents(texts)
     return [chunk.page_content for chunk in chunks]
 
-class ChromaVectorIndex:
+
+class FaissVectorIndex:
     def __init__(self, model_name='all-MiniLM-L6-v2'):
-        self.client = chromadb.Client(Settings())
-        self.collection = self.client.get_or_create_collection("rag_hybrid")
         self.model = SentenceTransformer(model_name)
+        self.index = None
         self.texts = []
 
     def build_index(self, chunks: List[str]):
         self.texts = chunks
-        embeddings = self.model.encode(chunks)
-        self.collection.add(
-            documents=chunks,
-            embeddings=embeddings.tolist(),
-            ids=[str(i) for i in range(len(chunks))]
-        )
+        embeddings = self.model.encode(chunks, convert_to_numpy=True)
+        self.index = faiss.IndexFlatL2(embeddings.shape[1])
+        self.index.add(embeddings)
 
     def search(self, query: str, k=5) -> List[str]:
-        query_emb = self.model.encode([query])[0]
-        results = self.collection.query(query_embeddings=[query_emb], n_results=k)
-        return results['documents'][0]
+        query_emb = self.model.encode([query], convert_to_numpy=True)
+        D, I = self.index.search(query_emb, k)
+        return [self.texts[i] for i in I[0]]
 
 
 class KnowledgeGraph:
@@ -77,7 +74,7 @@ class KnowledgeGraph:
 
 
 class HybridRetriever:
-    def __init__(self, vector_index: ChromaVectorIndex, graph: KnowledgeGraph):
+    def __init__(self, vector_index: FaissVectorIndex, graph: KnowledgeGraph):
         self.vector_index = vector_index
         self.graph = graph
 
@@ -86,6 +83,7 @@ class HybridRetriever:
         graph_results = self.graph.traverse(query)
         combined = list(set(vector_results + graph_results))
         return combined[:k]
+
 
 def generate_answer(query: str, context_chunks: List[str]) -> str:
     context = "\n".join(context_chunks)
@@ -100,6 +98,7 @@ def generate_answer(query: str, context_chunks: List[str]) -> str:
     )
     return response.choices[0].message.content.strip()
 
+
 def main():
     st.set_page_config(page_title="Hybrid RAG System")
     st.title("🔍 Hybrid RAG with Graph Knowledge Integration")
@@ -110,7 +109,7 @@ def main():
             docs = load_documents("data/sample.txt")
             chunks = chunk_documents(docs)
 
-            v_index = ChromaVectorIndex()
+            v_index = FaissVectorIndex()
             v_index.build_index(chunks)
 
             k_graph = KnowledgeGraph()
@@ -134,6 +133,7 @@ def main():
 
         st.markdown(f"⏱️ **Latency:** {end - start:.2f} seconds")
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     main()
+
