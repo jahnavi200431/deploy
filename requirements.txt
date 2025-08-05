@@ -6,8 +6,9 @@ python-dotenv
 langchain
 langchain-community
 networkx
-torch==2.2.1
+torch==2.7.1
 sentence-transformers==2.2.2
+
 
 
 
