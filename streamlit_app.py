@@ -10,6 +10,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import TextLoader
 import openai
 from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer
+import torch
 load_dotenv()
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -29,7 +31,13 @@ def chunk_documents(texts: List[str], chunk_size=500, overlap=50) -> List[str]:
 
 class FaissVectorIndex:
     def __init__(self, model_name='all-MiniLM-L6-v2'):
-        self.model = SentenceTransformer(model_name)
+        model_name = "all-MiniLM-L6-v2"  # or whatever you're using
+        model = SentenceTransformer(model_name)
+
+# Explicitly move model to CPU/GPU only after model is fully initialized
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model.to(torch.device(device))
+        self.model = model
         self.index = None
         self.texts = []
 
@@ -136,6 +144,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 
