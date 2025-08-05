@@ -1,10 +1,12 @@
 streamlit
+faiss-cpu
 sentence-transformers
-langchain
-chromadb[client]
 openai
+python-dotenv
+langchain
 networkx
-chromadb==0.4.15
+
+
 
 
 
